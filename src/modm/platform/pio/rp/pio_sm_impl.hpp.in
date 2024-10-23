@@ -1,0 +1,44 @@
+/*
+ * Copyright (c) 2022, Andrey Kunitsyn
+ *
+ * This file is part of the modm project.
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/.
+ */
+// ----------------------------------------------------------------------------
+#pragma once
+#include "pio_sm.hpp"
+
+// ----------------------------------------------------------------------------
+
+template <typename Pio,size_t SM>
+modm::ResumableResult<uint32_t>
+modm::platform::pio::StateMachine<Pio, SM>::read()
+{
+%% if use_fiber
+    // wait data
+    while (rxFifoEmpty()) modm::this_fiber::yield();
+    return read_fifo();
+%% else
+    while (rxFifoEmpty()) return {modm::rf::Running};
+    return {modm::rf::Stop, read_fifo()};
+%% endif
+}
+
+template <typename Pio,size_t SM>
+modm::ResumableResult<void>
+modm::platform::pio::StateMachine<Pio, SM>::write(uint32_t val)
+{
+%% if use_fiber
+    // wait data
+    while (txFifoFull()) modm::this_fiber::yield();
+    return write_fifo(val);
+%% else
+    while (txFifoFull()) return {modm::rf::Running};
+    write_fifo(val);
+    return {modm::rf::Stop};
+%% endif
+}
+
